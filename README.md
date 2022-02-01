@@ -1,2 +1,2 @@
 # eda_viz
- visualization tool for eda
+ This is a visualization template (matplotlib).
