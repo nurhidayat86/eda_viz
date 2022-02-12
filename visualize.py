@@ -234,4 +234,4 @@ if __name__ == "__main__":
     # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
     # print(corrmat)
     # num_stability(data, col_number, col_time, n_bins=5)
-    perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
+    # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
