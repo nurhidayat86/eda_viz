@@ -1,6 +1,7 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedShuffleSplit
 import numpy as np
 
 def nan_mat(data, col_feature, time, threshold=0):
@@ -214,6 +215,46 @@ def perf_mat(data, col_feature, col_target, time, method='gini', threshold=0.01,
     plt.tight_layout()
     plt.show()
 
+def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100):
+    df_cat = data[[col_cat, col_target]]
+    unique_overall = set(df_cat[col_cat].unique())
+    sss = StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=random_state)
+    sss.get_n_splits(df_cat[col_cat], df_cat[col_target])
+    df_train = pd.DataFrame(columns=unique_overall)
+    df_target = df_train.copy()
+    df_test = df_train.copy()
+    sr_count_missing = pd.Series(index=unique_overall, data=np.zeros(len(unique_overall)))
+
+    for train_index, test_index in sss.split(df_cat[col_cat], df_cat[col_target]):
+        unique_train = set(df_cat.loc[train_index, col_cat].unique())
+        unique_test = set(df_cat.loc[test_index, col_cat].unique())
+        sym_dif = unique_train.symmetric_difference(unique_test)
+        sr_count_missing[sym_dif] += 1
+        df_train = df_train.append(df_cat.loc[train_index, col_cat].value_counts(), ignore_index=True)
+        df_test = df_test.append(df_cat.loc[test_index, col_cat].value_counts(), ignore_index=True)
+        df_target = df_target.append(df_cat.loc[test_index, [col_cat, col_target]].groupby([col_cat]).mean().transpose(), ignore_index=True)
+
+    df_train = df_train.fillna(0)
+    df_train = df_train.agg(['min','mean','std', 'max']).transpose()
+    df_train.columns = df_train.columns + '_train'
+    df_test = df_test.fillna(0)
+    df_test = df_test.agg(['min', 'mean', 'std', 'max']).transpose()
+    df_test.columns = df_test.columns + '_test'
+
+    df_target = df_target.loc[:,unique_overall].agg(['mean', 'std']).transpose()
+    df_target['MAE'] = (df_target['std'].divide(df_target['mean'])).abs()
+    df_target['mean-std'] = df_target['mean']  - df_target['std']
+    df_target['mean+std'] = df_target['mean'] + df_target['std']
+    df_target.columns = df_target.columns + '_target'
+
+    df_summary = df_train.join(df_test, how='left').\
+        join(pd.DataFrame(sr_count_missing, columns=['count_missing']),how='left').\
+        join(df_target, how='left')
+
+    print(df_summary.loc[(df_summary.min_train>=min_size)&(df_summary.min_test>=min_size)&(df_summary.count_missing==0),:])
+
+
+
 if __name__ == "__main__":
     # pass
     pd.set_option('display.max_columns',100)
@@ -230,8 +271,10 @@ if __name__ == "__main__":
     col_number.remove(col_target)
     col_object = data.select_dtypes(include='object').columns.tolist()
     data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
+    print(data[col_object].columns)
     # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
     # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
     # print(corrmat)
     # num_stability(data, col_number, col_time, n_bins=5)
     # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
+    is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
