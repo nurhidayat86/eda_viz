@@ -236,10 +236,10 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
 
     df_train = df_train.fillna(0)
     df_train = df_train.agg(['min','mean','std', 'max']).transpose()
-    df_train.columns = df_train.columns + '_train'
+    df_train.columns = df_train.columns + '_count_of_train'
     df_test = df_test.fillna(0)
     df_test = df_test.agg(['min', 'mean', 'std', 'max']).transpose()
-    df_test.columns = df_test.columns + '_test'
+    df_test.columns = df_test.columns + '_count_of_test'
 
     df_target = df_target.loc[:,unique_overall].agg(['mean', 'std']).transpose()
     df_target['MAE'] = (df_target['std'].divide(df_target['mean'])).abs()
@@ -251,7 +251,8 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
         join(pd.DataFrame(sr_count_missing, columns=['count_missing']),how='left').\
         join(df_target, how='left')
 
-    print(df_summary.loc[(df_summary.min_train>=min_size)&(df_summary.min_test>=min_size)&(df_summary.count_missing==0),:])
+    # print(df_summary.loc[(df_summary.min_train>=min_size)&(df_summary.min_test>=min_size)&(df_summary.count_missing==0),:])
+    print(df_summary.sort_values(['min_count_of_test','count_missing'], ascending=[True, False]))
 
 
 
