@@ -238,7 +238,7 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
         sr_count_missing[sym_dif] += 1
         df_train = df_train.append(df_cat.loc[train_index, col_cat].value_counts(), ignore_index=True)
         df_test = df_test.append(df_cat.loc[test_index, col_cat].value_counts(), ignore_index=True)
-        df_target = df_target.append(df_cat.loc[test_index, [col_cat, col_target]].groupby([col_cat]).mean().transpose(), ignore_index=True)
+        df_target = df_target.append(df_cat.loc[train_index, [col_cat, col_target]].groupby([col_cat]).mean().transpose(), ignore_index=True)
 
     df_train = df_train.fillna(0)
     df_train = df_train.agg(['min','mean','std', 'max']).transpose()
