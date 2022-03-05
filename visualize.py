@@ -13,7 +13,6 @@ def nan_mat(data, col_feature, time, threshold=0):
     temp = temp.sort_values(by=['avg'], ascending=False)
     temp = temp.loc[temp['avg']>threshold,:]
     an_matrix = (100*temp.values).astype('int')
-    print(temp)
     plt.figure(figsize=(1*len(temp.columns),0.5*len(temp)))
     plt.imshow(temp, vmin=0, vmax=1, interpolation='nearest', cmap='Blues')
     for i in range(len(temp)):
@@ -27,6 +26,7 @@ def nan_mat(data, col_feature, time, threshold=0):
     plt.title('% NAN per predictor')
     plt.tight_layout()
     plt.show()
+    plt.close()
 
 def nan_share(data, col_feature, time, threshold=0):
     temp = data[col_feature + [time]].groupby(time).apply(lambda x: x.isna().sum() / (x.count() + x.isna().sum()))
@@ -55,6 +55,7 @@ def nan_share(data, col_feature, time, threshold=0):
         # plt.xticks(np.arange(temp.index[0], temp.index[-1]+1,step_xticks), rotation='vertical')
         plt.tight_layout()
         plt.show()
+        plt.close()
 
 def histogram(data, col_feature, n_bins=50):
     for i in range(0, len(col_feature)):
@@ -63,6 +64,7 @@ def histogram(data, col_feature, n_bins=50):
         ax.hist(temp, bins=n_bins)
         ax.set_title(col_feature[i])
         plt.show()
+        plt.close(fig)
 
 def num_stability(data, col_feature, time, n_bins=5, bar_width=0.75, w_mul=1, h_mul=0.5, enable_anottation=True):
     for i in range(0, len(col_feature)):
@@ -116,6 +118,7 @@ def num_stability(data, col_feature, time, n_bins=5, bar_width=0.75, w_mul=1, h_
         ax.set_title(f"{col_feature[i]}, NaN val: {nan_val}")
         plt.tight_layout()
         plt.show()
+        plt.close(fig)
 
 def corr_mat(data, col_feature, col_target, time, method='spearman', threshold=0.05, h_mul=0.4, v_mul=0.4, transpose=False):
     temp = data[col_feature + [col_target, time]].groupby(time).apply(
@@ -157,6 +160,7 @@ def corr_mat(data, col_feature, col_target, time, method='spearman', threshold=0
     plt.title(f'% Correlation ({method}) with {col_target}')
     plt.tight_layout()
     plt.show()
+    plt.close()
 
 def perf_mat(data, col_feature, col_target, time, method='gini', threshold=0.01, h_mul=0.4, v_mul=0.5, transpose=False):
     for i in range(0, len(col_feature)):
@@ -193,7 +197,7 @@ def perf_mat(data, col_feature, col_target, time, method='gini', threshold=0.01,
         v_size = h_mul*(len(temp)+1)
 
     an_matrix = (100 * temp.values).round(1)
-    print(f"{h_size}:{v_size}")
+    # print(f"{h_size}:{v_size}")
     plt.figure(figsize=(h_size, v_size))
     # plt.figure()
     cax = plt.imshow(temp, vmin=-1, vmax=1, interpolation='nearest', cmap='seismic')
@@ -214,8 +218,9 @@ def perf_mat(data, col_feature, col_target, time, method='gini', threshold=0.01,
     plt.title(f'% {method} predictors to predict {col_target}')
     plt.tight_layout()
     plt.show()
+    plt.close()
 
-def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100):
+def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100, MAE=0.3, h_mul=1, v_mul=1):
     df_cat = data[[col_cat, col_target]]
     unique_overall = set(df_cat[col_cat].unique())
     sss = StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=random_state)
@@ -251,31 +256,52 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
         join(pd.DataFrame(sr_count_missing, columns=['count_missing']),how='left').\
         join(df_target, how='left')
 
+    df_summary['min_samples'] = df_summary[['min_count_of_train', 'min_count_of_test']].min(axis=1)
+
     # print(df_summary.loc[(df_summary.min_train>=min_size)&(df_summary.min_test>=min_size)&(df_summary.count_missing==0),:])
-    print(df_summary.sort_values(['min_count_of_test','count_missing'], ascending=[True, False]))
+    # print(df_summary.sort_values(['min_count_of_test','count_missing'], ascending=[True, False]))
+
+    print(f"Predictor: {col_cat}")
+    print("==================================================================")
+    print(f"List of predictors: {df_summary.index.tolist()}")
+    print(f"Possible missing categories: {df_summary.loc[df_summary['count_missing']>0].sort_values(['count_missing'], ascending=False).index.tolist()}")
+    print(f"Categories <{min_size} samples: {df_summary.loc[df_summary['min_samples']<min_size].sort_values(['min_samples'], ascending=True).index.tolist()}")
+    print(f"Categories with target mean variance > {MAE}: {df_summary.loc[df_summary['MAE_target'] > MAE].sort_values(['MAE_target'], ascending=False).index.tolist()}")
+    print(f"Consider to merge this categories: {set(df_summary.loc[df_summary['count_missing']>0].sort_values(['count_missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_samples']<min_size].sort_values(['min_samples'], ascending=True).index.tolist())).union(set(df_summary.loc[df_summary['MAE_target'] > MAE].sort_values(['MAE_target'], ascending=False).index.tolist()))}")
+    print("")
+
+    # fig, ax = plt.subplots(figsize=(h_mul*df_summary.shape[0], v_mul*df_summary.shape[1]))
+    # # hide axes
+    # fig.patch.set_visible(False)
+    # ax.axis('off')
+    # ax.axis('tight')
+    # ax.table(cellText=df_summary.values, colLabels=df_summary.columns, loc='center')
+    # fig.tight_layout()
+    # plt.show()
+    # plt.close(fig)
 
 
 
 if __name__ == "__main__":
-    # pass
-    pd.set_option('display.max_columns',100)
-    pd.set_option('display.max_rows', 100)
-    path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
-
-    col_time = 'col_time'
-    col_target = 'churn'
-    col_id = 'Customer_ID'
-
-    data = pd.read_csv(path_data)
-    col_number = data.select_dtypes(include='number').columns.tolist()
-    col_number.remove(col_id)
-    col_number.remove(col_target)
-    col_object = data.select_dtypes(include='object').columns.tolist()
-    data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
-    print(data[col_object].columns)
-    # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
-    # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
-    # print(corrmat)
-    # num_stability(data, col_number, col_time, n_bins=5)
+    pass
+    # pd.set_option('display.max_columns',100)
+    # pd.set_option('display.max_rows', 100)
+    # path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
+    #
+    # col_time = 'col_time'
+    # col_target = 'churn'
+    # col_id = 'Customer_ID'
+    #
+    # data = pd.read_csv(path_data)
+    # col_number = data.select_dtypes(include='number').columns.tolist()
+    # col_number.remove(col_id)
+    # col_number.remove(col_target)
+    # col_object = data.select_dtypes(include='object').columns.tolist()
+    # data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
+    # print(data[col_object].columns)
+    # # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
+    # # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
+    # # print(corrmat)
+    # # num_stability(data, col_number, col_time, n_bins=5)
     # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
-    is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
+    # is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
