@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedShuffleSplit
 import numpy as np
+from matplotlib.ticker import PercentFormatter
 
 def nan_mat(data, col_feature, time, threshold=0):
     temp = data[col_feature + [time]].groupby(time).apply(
@@ -85,7 +86,7 @@ def num_stability(data, col_feature, time, n_bins=5, bar_width=0.75, w_mul=1, h_
         df_time['diff'] = (df_time['overall_share']-df_time['share']).abs()
         df_time.fillna(0, inplace=True)
         df_time = df_time.reset_index()
-        print(df_average)
+        # print(df_average)
 
         labels = ['base'] + df_len.index.astype('str').tolist()
         w_size = w_mul*(len(labels))
@@ -280,24 +281,95 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
     # plt.show()
     # plt.close(fig)
 
+def target_mean(data, col_target, time):
+    df_summary = data[[col_target, time]].groupby(time).agg(['mean', 'count'])
+    # print(df_summary['churn'])
+    fig, ax = plt.subplots()
+    ax.bar(df_summary.index, df_summary[(col_target,'count')], color='C0')
+    ax2 = ax.twinx()
+    ax2.plot(df_summary.index, (10*df_summary[(col_target,'mean')]).round(2), color='C1')
+    ax2.yaxis.set_major_formatter(PercentFormatter())
+    ax.tick_params(axis="y", colors="C0")
+    ax2.tick_params(axis="y", colors="C1")
+    ax.set_xticks(df_summary.index.tolist())
+    ax.set_xticklabels(df_summary.index.tolist(), rotation=45, ha='right')
+    ax.set_ylabel('count data', color='C0')
+    ax2.set_ylabel('% target mean', color='C1')
+    ax.set_xlabel(time)
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig)
 
+def cat_stability(data, col_feature, time, bar_width=0.75, w_mul=1, h_mul=0.5, enable_anottation=True):
+    for i in range(0, len(col_feature)):
+        temp = data.loc[:,[col_feature[i], time]]
+        nan_val = 'NA'
+        len_feature = len(temp[col_feature[i]])
+        temp[col_feature[i]] = temp[[col_feature[i]]].fillna(nan_val)
+        temp['binning'] = temp[col_feature[i]]
+        df_average = temp[[col_feature[i], 'binning']].groupby('binning').count()/len_feature
+        print(df_average)
+        df_len = temp[[col_feature[i], time]].groupby([time]).count()
+        df_time = temp[[col_feature[i], time, 'binning']].groupby([time, 'binning']).count()
+        first = df_time.index.get_level_values(time)
+        second = df_time.index.get_level_values('binning')
+        df_time['len'] = df_len.loc[first].values
+        df_time['share'] = df_time[col_feature[i]].divide(df_time['len'])
+        df_time['overall_share'] = df_average.loc[second].values
+        df_time['diff'] = (df_time['overall_share']-df_time['share']).abs()
+        df_time.fillna(0, inplace=True)
+        df_time = df_time.reset_index()
+        # print(df_average)
+
+        labels = ['base'] + df_len.index.astype('str').tolist()
+        w_size = w_mul*(len(labels))
+        h_size = h_mul*(len(df_average.index)+1)
+        if h_size <= 3: h_size=3
+        fig, ax = plt.subplots(figsize=(w_size, h_size))
+        bottom_bin = [0 for i in labels]
+
+        for idx_threshold in df_average.index.tolist():
+            temp_values = df_average.loc[idx_threshold].values.tolist() + df_time.loc[df_time['binning'] == idx_threshold, 'share'].values.tolist()
+            rects = ax.bar(labels, temp_values, width=bar_width, bottom=bottom_bin, label=idx_threshold)
+            bottom_bin = [bottom_bin[ijk] + temp_values[ijk] for ijk in range(len(bottom_bin))]
+
+            if enable_anottation:
+                for p in rects.patches:
+                    width, height = p.get_width(), p.get_height()
+                    x, y = p.get_xy()
+                    ax.text(x + width / 2,
+                            y + height / 2,
+                            '{:.0f}%'.format(height*100),
+                            horizontalalignment='center',
+                            verticalalignment='center')
+
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.set_xticks(np.arange(0, len(labels)))
+        ax.set_xticklabels(labels, rotation=45, rotation_mode="anchor", ha="right")
+        ax.set_yticks(np.arange(0, 1.1, 0.1))
+        ax.set_yticklabels([f"{i_label}%" for i_label in np.arange(0,110,10)])
+        ax.set_ylabel('Share')
+        ax.set_title(f"{col_feature[i]}, NaN val: {nan_val}")
+        plt.tight_layout()
+        plt.show()
+        plt.close(fig)
 
 if __name__ == "__main__":
-    pass
-    # pd.set_option('display.max_columns',100)
-    # pd.set_option('display.max_rows', 100)
-    # path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
-    #
-    # col_time = 'col_time'
-    # col_target = 'churn'
-    # col_id = 'Customer_ID'
-    #
-    # data = pd.read_csv(path_data)
-    # col_number = data.select_dtypes(include='number').columns.tolist()
-    # col_number.remove(col_id)
-    # col_number.remove(col_target)
-    # col_object = data.select_dtypes(include='object').columns.tolist()
-    # data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
+    # pass
+    pd.set_option('display.max_columns',100)
+    pd.set_option('display.max_rows', 100)
+    path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
+
+    col_time = 'col_time'
+    col_target = 'churn'
+    col_id = 'Customer_ID'
+
+    data = pd.read_csv(path_data)
+    col_number = data.select_dtypes(include='number').columns.tolist()
+    col_number.remove(col_id)
+    col_number.remove(col_target)
+    col_object = data.select_dtypes(include='object').columns.tolist()
+    data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
     # print(data[col_object].columns)
     # # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
     # # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
@@ -305,3 +377,5 @@ if __name__ == "__main__":
     # # num_stability(data, col_number, col_time, n_bins=5)
     # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
     # is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
+    # target_mean(data, col_target, col_time)
+    cat_stability(data, col_object, col_time, bar_width=0.75, w_mul=1, h_mul=0.5, enable_anottation=True)
