@@ -16,7 +16,7 @@ def split_data(data, col_target, col_time, train_size=0.4, valid_size=0.3, test_
     df_temp.loc[X_test.index, "data_type"] = "test"
     return df_temp.loc[:,"data_type"]
 
-def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_index=None, min_size=0, print_summary=False):
+def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_index=None, min_size=0, print_summary=False, merge_type='mode'):
     df_cat = data[[col_cat, col_target, 'data_type']]
     unique_overall = set(df_cat[col_cat].unique())
     df_train = pd.DataFrame(columns=unique_overall)
@@ -63,21 +63,35 @@ def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_i
             join(df_target, how='left')
         df_summary['min_count'] = df_summary[['count_train', 'count_test']].min(axis=1)
 
-    #
+    missing_category = df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()
+    min_samples = df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()
+    mode_sample = df_summary.sort_values(['min_count'], ascending=False).index.tolist()[0]
+    least_sample = df_summary.sort_values(['min_count'], ascending=True).index.tolist()[1]
+    merge_categories = list(set(missing_category).union(set(min_samples)))
+
+    if len(merge_categories) == 1 and merge_type == 'mode':
+        possible_merge = merge_categories + [mode_sample]
+    elif len(merge_categories) == 1 and merge_type == 'least':
+        possible_merge = merge_categories + [least_sample]
+    else:
+        possible_merge = merge_categories
+
     print(f"Predictor: {col_cat}")
     print("==================================================================")
     print(f"List of predictors: {df_summary.index.tolist()}")
-    print(f"Missing categories: {df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()}")
-    print(f"Categories <{min_size} samples: {df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()}")
-    print(f"Consider to merge this categories: {set(df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()))}")
+    print(f"Missing categories: {missing_category}")
+    print(f"Categories <{min_size} samples: {min_samples}")
+    print(f"Consider to merge this categories: {possible_merge}")
     if print_summary: print(df_summary.sort_values(by=['missing', 'min_count'], ascending=[False, True]))
     print("")
     output_dict = df_summary.to_dict()
     output_dict['predictor'] = col_cat
     output_dict['categories'] = df_summary.index.tolist()
-    output_dict['Missing categories'] = df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()
-    output_dict['min samples'] = df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()
-    output_dict['possible merge'] = list(set(df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist())))
+    output_dict['Missing categories'] = missing_category
+    output_dict['min samples'] = min_samples
+    output_dict['possible merge'] = possible_merge
+    output_dict['mode sample'] = mode_sample
+    output_dict['least sample'] = least_sample
     return output_dict
 
 
