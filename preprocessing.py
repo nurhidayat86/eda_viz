@@ -72,6 +72,14 @@ def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_i
     print(f"Consider to merge this categories: {set(df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()))}")
     if print_summary: print(df_summary.sort_values(by=['missing', 'min_count'], ascending=[False, True]))
     print("")
+    output_dict = df_summary.to_dict()
+    output_dict['predictor'] = col_cat
+    output_dict['categories'] = df_summary.index.tolist()
+    output_dict['Missing categories'] = df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()
+    output_dict['min samples'] = df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist()
+    output_dict['possible merge'] = list(set(df_summary.loc[df_summary['missing']>0].sort_values(['missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_count']<min_size].sort_values(['min_count'], ascending=True).index.tolist())))
+    return output_dict
+
 
 if __name__ == "__main__":
     pass
