@@ -1,8 +1,8 @@
 import pandas as pd
+import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import StratifiedShuffleSplit
-import numpy as np
 from matplotlib.ticker import PercentFormatter
 
 def nan_mat(data, col_feature, time, threshold=0):
