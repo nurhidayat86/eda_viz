@@ -94,6 +94,12 @@ def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_i
     output_dict['least sample'] = least_sample
     return output_dict
 
+def categorical_grouper(data, cols_cat, list_dict, replace=False, col_name='_rare'):
+    for i_dict in list_dict:
+        indexer = i_dict['predictor']
+        missing_cat = i_dict['Missing categories']
+
+
 
 if __name__ == "__main__":
     pass
