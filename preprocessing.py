@@ -94,10 +94,21 @@ def which_is_missing(data, col_cat, col_target, train_index, test_index, valid_i
     output_dict['least sample'] = least_sample
     return output_dict
 
-def categorical_grouper(data, cols_cat, list_dict, replace=False, col_name='_rare'):
+def rare_category_grouper(data, cols_cat, list_dict, replace=False, col_name='_rare', var_name='_r1'):
+    cols_cat_rare = cols_cat.copy()
+    df_temp = pd.DataFrame(index=data.index)
     for i_dict in list_dict:
         indexer = i_dict['predictor']
         missing_cat = i_dict['Missing categories']
+        possible_merge = i_dict["possible merge"]
+        if len(possible_merge) > 0:
+            print(f"Predictor {indexer}: {missing_cat} --> {possible_merge}")
+            cols_cat_rare.remove(indexer)
+            cols_cat_rare.append(indexer+col_name)
+            df_temp[indexer+col_name] = data[indexer].values
+            for i_merge in possible_merge:
+                df_temp.loc[df_temp[indexer+col_name] == i_merge, indexer+col_name] = indexer+var_name
+    return cols_cat_rare, df_temp
 
 
 

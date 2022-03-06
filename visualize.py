@@ -271,16 +271,6 @@ def is_granular(data, col_cat, col_target, n_splits=100, test_size=0.4, random_s
     print(f"Consider to merge this categories: {set(df_summary.loc[df_summary['count_missing']>0].sort_values(['count_missing'], ascending=False).index.tolist()).union(set(df_summary.loc[df_summary['min_samples']<min_size].sort_values(['min_samples'], ascending=True).index.tolist())).union(set(df_summary.loc[df_summary['MAE_target'] > MAE].sort_values(['MAE_target'], ascending=False).index.tolist()))}")
     print("")
 
-    # fig, ax = plt.subplots(figsize=(h_mul*df_summary.shape[0], v_mul*df_summary.shape[1]))
-    # # hide axes
-    # fig.patch.set_visible(False)
-    # ax.axis('off')
-    # ax.axis('tight')
-    # ax.table(cellText=df_summary.values, colLabels=df_summary.columns, loc='center')
-    # fig.tight_layout()
-    # plt.show()
-    # plt.close(fig)
-
 def target_mean(data, col_target, time):
     df_summary = data[[col_target, time]].groupby(time).agg(['mean', 'count'])
     # print(df_summary['churn'])
@@ -354,28 +344,47 @@ def cat_stability(data, col_feature, time, bar_width=0.75, w_mul=1, h_mul=0.5, e
         plt.show()
         plt.close(fig)
 
+def Nan_present(data, cols_feature, train_mask, test_mask, valid_mask=None):
+    null_train = data.loc[train_mask, cols_feature].count() / data.loc[train_mask, cols_feature].shape[0]
+    null_train = set(null_train[null_train < 1].index)
+    null_test = data.loc[test_mask, cols_feature].count() / data.loc[test_mask, cols_feature].shape[0]
+    null_test = set(null_test[null_test < 1].index)
+
+    if valid_mask is not None:
+        null_valid = data.loc[valid_mask, cols_feature].count() / data.loc[valid_mask, cols_feature].shape[0]
+        null_valid = set(null_valid[null_valid < 1].index)
+
+    print(f"NaN in test but not in train: {null_test.difference(null_train)}")
+    print(f"NaN in train but not in test: {null_train.difference(null_test)}")
+    if valid_mask is not None:
+        print(f"NaN in valid but not in train: {null_valid.difference(null_train)}")
+        print(f"NaN in valid but not in test: {null_valid.difference(null_test)}")
+        print(f"NaN in train but not in valid: {null_train.difference(null_valid)}")
+        print(f"NaN in test but not in valid: {null_test.difference(null_valid)}")
+
+
 if __name__ == "__main__":
-    # pass
-    pd.set_option('display.max_columns',100)
-    pd.set_option('display.max_rows', 100)
-    path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
-
-    col_time = 'col_time'
-    col_target = 'churn'
-    col_id = 'Customer_ID'
-
-    data = pd.read_csv(path_data)
-    col_number = data.select_dtypes(include='number').columns.tolist()
-    col_number.remove(col_id)
-    col_number.remove(col_target)
-    col_object = data.select_dtypes(include='object').columns.tolist()
-    data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
-    # print(data[col_object].columns)
-    # # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
-    # # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
-    # # print(corrmat)
-    # # num_stability(data, col_number, col_time, n_bins=5)
-    # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
-    # is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
-    # target_mean(data, col_target, col_time)
-    cat_stability(data, col_object, col_time, bar_width=0.75, w_mul=1, h_mul=0.5, enable_anottation=True)
+    pass
+    # pd.set_option('display.max_columns',100)
+    # pd.set_option('display.max_rows', 100)
+    # path_data = 'H:\\Datascience\\Data\\Telecom_customer churn.csv'
+    #
+    # col_time = 'col_time'
+    # col_target = 'churn'
+    # col_id = 'Customer_ID'
+    #
+    # data = pd.read_csv(path_data)
+    # col_number = data.select_dtypes(include='number').columns.tolist()
+    # col_number.remove(col_id)
+    # col_number.remove(col_target)
+    # col_object = data.select_dtypes(include='object').columns.tolist()
+    # data['col_time'] = pd.qcut(data['Customer_ID'], 10, labels=False)
+    # # print(data[col_object].columns)
+    # # # corrmat = data[col_number].corrwith(data[col_target], method='spearman')
+    # # # corr_mat(data, col_number, col_target, col_time, method='spearman', transpose=False)
+    # # # print(corrmat)
+    # # # num_stability(data, col_number, col_time, n_bins=5)
+    # # perf_mat(data, col_number, col_target, col_time, method='gini', threshold=0.05, transpose=True)
+    # # is_granular(data, col_object[1], col_target, n_splits=100, test_size=0.4, random_state=1234, min_size=100)
+    # # target_mean(data, col_target, col_time)
+    # cat_stability(data, col_object, col_time, bar_width=0.75, w_mul=1, h_mul=0.5, enable_anottation=True)
